@@ -55,6 +55,9 @@ func (l *Logger) log(level LogLevel, msg string) {
 
 		// Assign the appropriate color for the log level
 		switch level {
+		case DEBUG:
+			levelString = "DEBUG"
+			levelColor = color.New(color.FgBlue)
 		case INFO:
 			levelString = "INFO"
 			levelColor = color.New(color.FgGreen) // Green for INFO
