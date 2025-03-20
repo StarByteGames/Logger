@@ -17,24 +17,14 @@ const (
 	WARNING
 	ERROR
 	FATAL
+	DEBUG
 )
 
 // Mapping of custom exit codes for different error types
 var exitCodes = map[string]int{
-	"SUCCESS":              0,
-	"DB_INIT_ERROR":        10,
-	"DEVICE_STORE_ERROR":   11,
-	"CLIENT_CONNECT_ERROR": 12,
-	"QR_GENERATE_ERROR":    13,
-	"QR_OPEN_ERROR":        14,
-	"QR_DECODE_ERROR":      15,
-	"QR_RESIZE_ERROR":      16,
-	"QR_FILE_CREATE_ERROR": 17,
-	"QR_FILE_ENCODE_ERROR": 18,
-	"QR_RENDER_ERROR":      19,
-	"GROUP_FETCH_ERROR":    20,
-	"CONTACT_FETCH_ERROR":  21,
-	"SHUTDOWN":             99,
+	"ERROR":    -1,
+	"SHUTDOWN": 0,
+	"SUCCESS":  0,
 }
 
 // Logger struct holds the log level and methods to log messages
@@ -87,8 +77,8 @@ func (l *Logger) log(level LogLevel, msg string) {
 
 		// If Fatal, exit the program
 		if level == FATAL {
-			// Pass the corresponding exit code for SUCCESS, which is 0
-			l.handleFatal(exitCodes["SUCCESS"])
+			// Pass the corresponding exit code for ERROR, which is -1
+			l.handleFatal(exitCodes["ERROR"])
 		}
 	}
 }
@@ -96,30 +86,46 @@ func (l *Logger) log(level LogLevel, msg string) {
 // Info logs a message with INFO level.
 // Parameters:
 // - msg: The log message to be displayed.
-func (l *Logger) Info(msg string) {
-	l.log(INFO, msg)
+func (l *Logger) Info(msg ...string) {
+	message := ""
+	for _, part := range msg {
+		message += part + " "
+	}
+	l.log(INFO, message)
 }
 
 // Warning logs a message with WARNING level.
 // Parameters:
 // - msg: The log message to be displayed.
-func (l *Logger) Warning(msg string) {
-	l.log(WARNING, msg)
+func (l *Logger) Warning(msg ...string) {
+	message := ""
+	for _, part := range msg {
+		message += part + " "
+	}
+	l.log(WARNING, message)
 }
 
 // Error logs a message with ERROR level.
 // Parameters:
 // - msg: The log message to be displayed.
-func (l *Logger) Error(msg string) {
-	l.log(ERROR, msg)
+func (l *Logger) Error(msg ...string) {
+	message := ""
+	for _, part := range msg {
+		message += part + " "
+	}
+	l.log(ERROR, message)
 }
 
 // Fatal logs a message with FATAL level and exits the program with the corresponding exit code.
 // Parameters:
-// - msg: The log message to be displayed.
 // - exitCodeName: The name of the exit code to be used from the exitCodes map.
-func (l *Logger) Fatal(msg string, exitCodeName string) {
-	l.log(FATAL, msg)
+// - msg: The log message to be displayed.
+func (l *Logger) Fatal(exitCodeName string, msg ...string) {
+	message := ""
+	for _, part := range msg {
+		message += part + " "
+	}
+	l.log(FATAL, message)
 
 	// Fetch the exit code from the map by its name
 	exitCode, exists := exitCodes[exitCodeName]
