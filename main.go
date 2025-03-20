@@ -13,11 +13,11 @@ type LogLevel int
 
 // Defining different log levels
 const (
-	INFO LogLevel = iota
+	DEBUG LogLevel = iota
+	INFO
 	WARNING
 	ERROR
 	FATAL
-	DEBUG
 )
 
 // Mapping of custom exit codes for different error types
@@ -103,6 +103,17 @@ func (l *Logger) Warning(msg ...string) {
 		message += part + " "
 	}
 	l.log(WARNING, message)
+}
+
+// Debug logs a message with DEBUG level.
+// Parameters:
+// - msg: The log message to be displayed.
+func (l *Logger) Debug(msg ...string) {
+	message := ""
+	for _, part := range msg {
+		message += part + " "
+	}
+	l.log(DEBUG, message)
 }
 
 // Error logs a message with ERROR level.
