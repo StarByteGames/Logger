@@ -20,16 +20,10 @@ const (
 	FATAL
 )
 
-// Mapping of custom exit codes for different error types
-var exitCodes = map[string]int{
-	"ERROR":    -1,
-	"SHUTDOWN": 0,
-	"SUCCESS":  0,
-}
-
-// Logger struct holds the log level and methods to log messages
+// Logger struct holds the log level, exit codes, and methods to log messages
 type Logger struct {
-	level LogLevel
+	level     LogLevel
+	ExitCodes map[string]int
 }
 
 // NewLogger creates a new Logger instance with the provided log level.
@@ -38,8 +32,14 @@ type Logger struct {
 // Returns:
 // - A pointer to a new Logger instance.
 func NewLogger(level LogLevel) *Logger {
+	// Initialize ExitCodes when creating a new logger instance
 	return &Logger{
 		level: level,
+		ExitCodes: map[string]int{
+			"ERROR":    -1,
+			"SHUTDOWN": 0,
+			"SUCCESS":  0,
+		},
 	}
 }
 
@@ -78,7 +78,7 @@ func (l *Logger) log(level LogLevel, msg string) {
 		// If Fatal, exit the program
 		if level == FATAL {
 			// Pass the corresponding exit code for ERROR, which is -1
-			l.handleFatal(exitCodes["ERROR"])
+			l.handleFatal(l.ExitCodes["ERROR"])
 		}
 	}
 }
@@ -129,7 +129,7 @@ func (l *Logger) Error(msg ...string) {
 
 // Fatal logs a message with FATAL level and exits the program with the corresponding exit code.
 // Parameters:
-// - exitCodeName: The name of the exit code to be used from the exitCodes map.
+// - exitCodeName: The name of the exit code to be used from the ExitCodes map.
 // - msg: The log message to be displayed.
 func (l *Logger) Fatal(exitCodeName string, msg ...string) {
 	message := ""
@@ -139,11 +139,11 @@ func (l *Logger) Fatal(exitCodeName string, msg ...string) {
 	l.log(FATAL, message)
 
 	// Fetch the exit code from the map by its name
-	exitCode, exists := exitCodes[exitCodeName]
+	exitCode, exists := l.ExitCodes[exitCodeName] // Access ExitCodes via the logger instance
 	if !exists {
 		// If the exit code name is not valid, use "SUCCESS" (0) as a fallback
 		log.Printf("Invalid exit code name. Defaulting to 'SUCCESS' (0).\n")
-		exitCode = exitCodes["SUCCESS"]
+		exitCode = l.ExitCodes["SUCCESS"] // Access ExitCodes via the logger instance
 	}
 
 	// Handle fatal error by exiting the program with the specified exit code
