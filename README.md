@@ -1,69 +1,65 @@
-# Logger Package
+# Logger
 
-A simple and customizable logging package for Go.
+A simple, customizable logging package for Go with colored console output and file logging.
 
 ## Features
-- Log messages with different levels: `INFO`, `WARNING`, `ERROR`, and `FATAL`.
-- Colored output for better visibility in terminal.
-- Graceful handling of fatal errors with custom exit codes.
+
+- Multiple log levels: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `FATAL`
+- Colored output for terminal logs
+- Log messages to both file and console
+- Customizable exit codes for fatal errors
+- Automatic file cleanup via Go's garbage collector
 
 ## Installation
 
-To install the package, run the following command:
+Add the package to your project:
 
-```bash
+```sh
 go get github.com/StarGames2025/Logger
 ```
 
 ## Usage
-
-Below is an example of how to use the Logger package in your Go project:
 
 ```go
 package main
 
 import (
     "github.com/StarGames2025/Logger"
-    "time"
 )
 
 func main() {
-    // Create a new logger instance with INFO level
-    logger := Logger.NewLogger(Logger.INFO)
+    // Create a new logger (log level, log file path, log to console)
+    logger, err := Logger.NewLogger(Logger.INFO, "app.log", true)
+    if err != nil {
+        panic(err)
+    }
+    defer logger.Close()
 
-    // Log messages with different levels
-    logger.Info("This is an info message.")
-    logger.Warning("This is a warning message.")
-    logger.Error("This is an error message.")
-    
-    // Log a fatal error with a custom exit code
-    logger.Fatal("This is a fatal error message.", "DB_INIT_ERROR")
+    logger.Debug("This is a debug message")
+    logger.Info("Application started")
+    logger.Warning("This is a warning")
+    logger.Error("An error occurred")
+    logger.Fatal("SHUTDOWN", "Fatal error, shutting down")
 }
 ```
 
-### Log Levels
-- **INFO**: Standard informational messages.
-- **WARNING**: Warnings about potential issues.
-- **ERROR**: Errors that need attention but do not cause the program to stop.
-- **FATAL**: Critical errors that cause the program to stop.
+## Log Levels
 
-### Exit Codes
-The logger handles different exit codes for fatal errors. You can specify a custom exit code when calling `Fatal()`.
+- `DEBUG`: Detailed debug information
+- `INFO`: General information
+- `WARNING`: Warnings about potential issues
+- `ERROR`: Errors that do not stop the program
+- `FATAL`: Critical errors that terminate the program
 
-Available exit codes are:
-- `SUCCESS` (0)
-- `DB_INIT_ERROR` (10)
-- `DEVICE_STORE_ERROR` (11)
-- and more...
+## Exit Codes
+
+Customize exit codes via the `ExitCodes` map in the logger. By default:
+- `"ERROR"`: -1
+- `"SHUTDOWN"`: 0
+- `"SUCCESS"`: 0
+
+You can add more codes as needed.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Contributing
-
-Feel free to fork the repository and open a pull request for improvements or bug fixes. Contributions are always welcome!
-
-## Author
-
-DevStarByte
+MIT License. See [LICENSE](LICENSE) for details.
