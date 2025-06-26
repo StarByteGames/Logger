@@ -9,6 +9,7 @@ import (
 	"github.com/fatih/color"
 )
 
+// LogLevel represents the severity level of a log message
 type LogLevel int
 
 // Defining different log levels
@@ -20,66 +21,108 @@ const (
 	FATAL
 )
 
-// Logger struct holds the log level, exit codes, and methods to log messages
+// Logger struct holds the log level, file writer, console flag, and exit codes
 type Logger struct {
-	level     LogLevel
-	ExitCodes map[string]int
+	level        LogLevel
+	logFile      *os.File
+	logToConsole bool
+	ExitCodes    map[string]int
 }
 
-// NewLogger creates a new Logger instance with the provided log level.
+// NewLogger creates a new Logger instance with the provided log level and file path.
+// Automatically sets a finalizer to close the file when the logger is garbage collected.
 // Parameters:
 // - level: The minimum log level the logger should display.
+// - logFilePath: The path to the log file.
+// - logToConsole: Whether to also print logs to the terminal.
 // Returns:
-// - A pointer to a new Logger instance.
-func NewLogger(level LogLevel) *Logger {
-	// Initialize ExitCodes when creating a new logger instance
-	return &Logger{
-		level: level,
+// - A pointer to a Logger instance and an error if file creation fails.
+func NewLogger(level LogLevel, logFilePath string, logToConsole bool) (*Logger, error) {
+	file, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+
+	logger := &Logger{
+		level:        level,
+		logFile:      file,
+		logToConsole: logToConsole,
 		ExitCodes: map[string]int{
 			"ERROR":    -1,
 			"SHUTDOWN": 0,
 			"SUCCESS":  0,
 		},
 	}
+
+	// Automatically close the log file when the logger is garbage collected
+	runtime.SetFinalizer(logger, func(l *Logger) {
+		fmt.Println("Finalizer: Closing log file.")
+		l.Close()
+	})
+
+	return logger, nil
+}
+
+// Close closes the log file.
+// Should be called when logging is no longer needed.
+func (l *Logger) Close() {
+	if l.logFile != nil {
+		l.logFile.Close()
+	}
 }
 
 // log is the core logging function. It prints log messages with a timestamp,
-// log level, and color according to the specified log level.
+// log level, and color (to console) according to the specified log level.
 // Parameters:
-// - level: The log level for the message (INFO, WARNING, ERROR, FATAL).
+// - level: The log level for the message (DEBUG, INFO, WARNING, ERROR, FATAL).
 // - msg: The log message to be displayed.
 func (l *Logger) log(level LogLevel, msg string) {
-	if level >= l.level {
-		levelString := ""
-		var levelColor *color.Color
+	if level < l.level {
+		return
+	}
 
-		// Assign the appropriate color for the log level
-		switch level {
-		case INFO:
-			levelString = "INFO"
-			levelColor = color.New(color.FgGreen) // Green for INFO
-		case WARNING:
-			levelString = "WARNING"
-			levelColor = color.New(color.FgYellow) // Yellow for WARNING
-		case ERROR:
-			levelString = "ERROR"
-			levelColor = color.New(color.FgRed) // Red for ERROR
-		case FATAL:
-			levelString = "FATAL"
-			levelColor = color.New(color.FgMagenta) // Magenta for FATAL
-		}
+	var levelString string
+	var levelColor *color.Color
 
-		// Set the timestamp to white
-		timestamp := color.New(color.FgWhite)
+	// Assign the appropriate color for the log level
+	switch level {
+	case DEBUG:
+		levelString = "DEBUG"
+		levelColor = color.New(color.FgCyan) // Cyan for DEBUG
+	case INFO:
+		levelString = "INFO"
+		levelColor = color.New(color.FgGreen) // Green for INFO
+	case WARNING:
+		levelString = "WARNING"
+		levelColor = color.New(color.FgYellow) // Yellow for WARNING
+	case ERROR:
+		levelString = "ERROR"
+		levelColor = color.New(color.FgRed) // Red for ERROR
+	case FATAL:
+		levelString = "FATAL"
+		levelColor = color.New(color.FgMagenta) // Magenta for FATAL
+	}
 
-		// Print timestamp and log message with colors
-		fmt.Printf("[%s] %s: %s\n", timestamp.Sprint(time.Now().Format("2006-01-02 15:04:05")), levelColor.Sprint(levelString), msg)
+	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	logLine := fmt.Sprintf("[%s] %s: %s\n", timestamp, levelString, msg)
 
-		// If Fatal, exit the program
-		if level == FATAL {
-			// Pass the corresponding exit code for ERROR, which is -1
-			l.handleFatal(l.ExitCodes["ERROR"])
-		}
+	// Write to file (without color)
+	if l.logFile != nil {
+		l.logFile.WriteString(logLine)
+	}
+
+	// Print to console (with color)
+	if l.logToConsole {
+		fmt.Printf("[%s] %s: %s\n",
+			color.New(color.FgWhite).Sprint(timestamp),
+			levelColor.Sprint(levelString),
+			msg,
+		)
+	}
+
+	// Exit if level is FATAL
+	if level == FATAL {
+		l.handleFatal(l.ExitCodes["ERROR"])
 	}
 }
 
@@ -87,44 +130,28 @@ func (l *Logger) log(level LogLevel, msg string) {
 // Parameters:
 // - msg: The log message to be displayed.
 func (l *Logger) Info(msg ...string) {
-	message := ""
-	for _, part := range msg {
-		message += part + " "
-	}
-	l.log(INFO, message)
+	l.log(INFO, join(msg))
 }
 
 // Warning logs a message with WARNING level.
 // Parameters:
 // - msg: The log message to be displayed.
 func (l *Logger) Warning(msg ...string) {
-	message := ""
-	for _, part := range msg {
-		message += part + " "
-	}
-	l.log(WARNING, message)
+	l.log(WARNING, join(msg))
 }
 
 // Debug logs a message with DEBUG level.
 // Parameters:
 // - msg: The log message to be displayed.
 func (l *Logger) Debug(msg ...string) {
-	message := ""
-	for _, part := range msg {
-		message += part + " "
-	}
-	l.log(DEBUG, message)
+	l.log(DEBUG, join(msg))
 }
 
 // Error logs a message with ERROR level.
 // Parameters:
 // - msg: The log message to be displayed.
 func (l *Logger) Error(msg ...string) {
-	message := ""
-	for _, part := range msg {
-		message += part + " "
-	}
-	l.log(ERROR, message)
+	l.log(ERROR, join(msg))
 }
 
 // Fatal logs a message with FATAL level and exits the program with the corresponding exit code.
@@ -132,18 +159,15 @@ func (l *Logger) Error(msg ...string) {
 // - exitCodeName: The name of the exit code to be used from the ExitCodes map.
 // - msg: The log message to be displayed.
 func (l *Logger) Fatal(exitCodeName string, msg ...string) {
-	message := ""
-	for _, part := range msg {
-		message += part + " "
-	}
+	message := join(msg)
 	l.log(FATAL, message)
 
 	// Fetch the exit code from the map by its name
-	exitCode, exists := l.ExitCodes[exitCodeName] // Access ExitCodes via the logger instance
+	exitCode, exists := l.ExitCodes[exitCodeName]
 	if !exists {
 		// If the exit code name is not valid, use "SUCCESS" (0) as a fallback
 		log.Printf("Invalid exit code name. Defaulting to 'SUCCESS' (0).\n")
-		exitCode = l.ExitCodes["SUCCESS"] // Access ExitCodes via the logger instance
+		exitCode = l.ExitCodes["SUCCESS"]
 	}
 
 	// Handle fatal error by exiting the program with the specified exit code
@@ -155,11 +179,20 @@ func (l *Logger) Fatal(exitCodeName string, msg ...string) {
 // Parameters:
 // - exitCode: The exit code to be used when exiting the program.
 func (l *Logger) handleFatal(exitCode int) {
-	// Simulate the handling of a fatal error (e.g., triggering cleanup, etc.)
 	log.Println("A fatal error occurred. Exiting...")
-
-	// You could also do cleanup here if needed before exiting
-
-	// Exit the program with the provided exit code
+	l.Close()
 	os.Exit(exitCode)
+}
+
+// join joins multiple strings with spaces.
+// Parameters:
+// - parts: Variadic string parts to concatenate.
+// Returns:
+// - A single string with all parts separated by spaces.
+func join(parts []string) string {
+	result := ""
+	for _, part := range parts {
+		result += part + " "
+	}
+	return result
 }
