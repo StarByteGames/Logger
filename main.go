@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"time"
+	"runtime"
 
 	"github.com/fatih/color"
 )
